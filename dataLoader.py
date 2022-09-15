@@ -13,9 +13,9 @@ import os
 
 class CelebA64_Dataset(Dataset):
 
-    def __init__(self, opt):
-        self.mode = opt.mode
-        self.img_size = opt.img_size
+    def __init__(self, config):
+        self.mode = config['MODE']
+        self.img_size = config['TRAINING_CONFIG']['RES']
         self.img_dir = os.path.join('data', 'CelebA', 'Img', 'img_align_celeba_64x64')
         self.sketch_dir = os.path.join('data', 'CelebA', 'Img', 'img_align_celeba_sketch')
 

@@ -1,0 +1,62 @@
+MODEL_CONFIG:
+  TYPE: 'dcgan'
+  LATENT_DIM: 100 
+
+G_CONFIG:
+  INPUT_CH: 1
+  NGF: 16
+  NORM: 'instance'
+
+
+D_CONFIG:
+  INPUT_CH: 4
+  NDF: 16
+  N_LAYER: 3
+  NUM_D: 1
+  NORM: 'instance'
+  SN: true
+
+
+
+MODE : 'train'
+
+TRAINING_CONFIG:
+
+  EPOCH: 300
+  BATCH_SIZE: 128
+  NUM_WORKER: 12
+
+  # lr
+  LR: 0.0002
+
+  # Optimizer
+  OPTIM : ADAM
+  BETA1: 0.5
+  BETA2: 0.999
+
+  RES: 64
+
+  # Directory
+  TRAIN_DIR : 'dcgan_sn_CelebA64'
+
+  # Step Size
+  SAMPLE_STEP: 400 # iteration based
+  SAVE_STEP : 1 # epoch based
+  SAVE_START : 1
+
+
+
+
+VAL_CONFIG:
+  # Evaluated Epoch
+  START_EPOCH: 30
+  END_EPOCH: 300
+  EPOCH_STEP: 5
+  BATCH_SIZE: 1
+  GEN_NUM: 2000
+
+  # Directory
+  DATA_DIR: 'data/1024x768/Zalando_top'
+
+
+

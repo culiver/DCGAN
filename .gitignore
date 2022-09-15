@@ -2,6 +2,7 @@ data/
 result/
 runs/
 images_train/
+weights/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

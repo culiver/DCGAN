@@ -5,14 +5,13 @@ import torch
 from torch.nn.utils import spectral_norm
 
 class Generator(nn.Module):
-    def __init__(self, input_size=64):
+    def __init__(self, config):
         super(Generator, self).__init__()
 
-        self.init_size = input_size // 4
+        self.init_size = config['TRAINING_CONFIG']['RES'] // 4
         self.l1 = nn.Sequential(nn.Linear(100, 128 * self.init_size ** 2))
-
-        self.main_module = nn.Sequential(
-            nn.BatchNorm2d(128),
+        layers = [] if config['MODEL_CONFIG']['TYPE'] == 'lsgan' else [nn.BatchNorm2d(128)]
+        layers += [
             nn.Upsample(scale_factor=2),
             nn.Conv2d(128, 128, 3, stride=1, padding=1),
             nn.BatchNorm2d(128, 0.8),
@@ -23,7 +22,8 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, 3, 3, stride=1, padding=1),
             nn.Tanh(),
-        )
+        ]
+        self.main_module = nn.Sequential(*layers)
 
     def forward(self, z):
         out = self.l1(z)
@@ -33,7 +33,7 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_size=64, sn=False):
+    def __init__(self, config):
         super(Discriminator, self).__init__()
 
         def discriminator_block(in_filters, out_filters, sn=False, bn=True):
@@ -45,18 +45,19 @@ class Discriminator(nn.Module):
             return block
 
         self.model = nn.Sequential(
-            *discriminator_block(3, 16, bn=False),
-            *discriminator_block(16, 32, bn=False),
-            *discriminator_block(32, 64, bn=False),
-            *discriminator_block(64, 128, bn=False),
+            *discriminator_block(3, 16, sn=config['D_CONFIG']['SN'], bn=False),
+            *discriminator_block(16, 32, sn=config['D_CONFIG']['SN']),
+            *discriminator_block(32, 64, sn=config['D_CONFIG']['SN']),
+            *discriminator_block(64, 128, sn=config['D_CONFIG']['SN']),
         )
 
         # The height and width of downsampled image
-        ds_size = input_size // 2 ** 4
-        fc = nn.Linear(128 * ds_size ** 2, 1)
-        if sn:
-            fc = spectral_norm(fc)
-        self.adv_layer = nn.Sequential(fc, nn.Sigmoid())
+        ds_size = config['TRAINING_CONFIG']['RES'] // 2 ** 4
+        adv_layer = []
+        adv_layer.append(spectral_norm(nn.Linear(128 * ds_size ** 2, 1)) if config['D_CONFIG']['SN'] else nn.Linear(128 * ds_size ** 2, 1))
+        if config['MODEL_CONFIG']['TYPE'] != 'lsgan':
+            adv_layer.append(nn.Sigmoid())
+        self.adv_layer = nn.Sequential(*adv_layer)
 
     def forward(self, img):
         out = self.model(img)
