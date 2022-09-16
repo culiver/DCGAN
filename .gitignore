@@ -3,6 +3,7 @@ result/
 runs/
 images_train/
 weights/
+gen_celebA_dataset/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

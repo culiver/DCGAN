@@ -165,7 +165,7 @@ def train(opt):
             torch.save(save_info, weight_name)
         torch.save(save_info, weights_path)
 
-def inference(config):
+def val(config):
     record_file = os.path.join('result', config['TRAINING_CONFIG']['TRAIN_DIR'], 'FID_score.txt')
     f = open(record_file, 'a')
     
@@ -209,24 +209,19 @@ def inference(config):
 
         max_batch_num = 100
 
-        for r in range(config['VAL_CONFIG']['GEN_NUM'] // max_batch_num):
+        num_left = config['VAL_CONFIG']['GEN_NUM']
+
+        while num_left > 0:
+            temp_batch_size = min(max_batch_num, num_left)
             z = Variable(
-                Tensor(np.random.normal(0, 1, (max_batch_num, config['MODEL_CONFIG']['LATENT_DIM']))))
+                Tensor(np.random.normal(0, 1, (temp_batch_size, config['MODEL_CONFIG']['LATENT_DIM']))))
             gen_imgs = generator(z)
 
-            for i in range(0, max_batch_num):
+            for i in range(0, temp_batch_size):
                 save_image(gen_imgs.data[i],
-                           "{}/{}.png".format(fid_pred_folder, (i + r * max_batch_num)),
-                           normalize=True)
-
-        if config['VAL_CONFIG']['GEN_NUM'] % max_batch_num != 0:
-            z = Variable(
-                Tensor(np.random.normal(0, 1, (max_batch_num, config['MODEL_CONFIG']['LATENT_DIM']))))
-            gen_imgs = generator(z)
-            for i in range(0, config['VAL_CONFIG']['GEN_NUM'] % max_batch_num):
-                save_image(gen_imgs.data[i],
-                           "{}/{}.png".format(target_folder, (i + config['VAL_CONFIG']['GEN_NUM'] // max_batch_num * max_batch_num)),
-                           normalize=True)
+                            "{}/{}.jpg".format(fid_pred_folder, (i + config['VAL_CONFIG']['GEN_NUM']-num_left)),
+                            normalize=True)
+            num_left += -temp_batch_size
 
         fid = fid_score.calculate_fid_given_paths(paths=['data/CelebA/Img/img_align_celeba_64x64_val', fid_pred_folder],batch_size=100,device=torch.device(0),dims=2048,num_workers=12)
         # is_score = inception_score(FaceDataset('../GAN/images_inference/'), cuda=True, batch_size=32, resize=True, splits=1)
@@ -240,9 +235,53 @@ def inference(config):
     print(best_model,best_fid)
     f.write('Best epoch:{} Best fid:{}\n'.format(best_model, best_fid))
 
+def test(config):
+    weight_dir = os.path.join('result', config['TRAINING_CONFIG']['TRAIN_DIR'], 'weights')
+    weight_path = os.path.join(weight_dir, '{}.pkl'.format(config['TRAINING_CONFIG']['TRAIN_DIR']))
+    output_dir = config['TEST_CONFIG']['OUTPUT_DIR']
+    os.makedirs(output_dir, exist_ok=True)
+
+    cuda = True if torch.cuda.is_available() else False
+
+    # Initialize generator and discriminator
+    generator = Generator(config).cuda()
+    discriminator = Discriminator(config).cuda()
+    
+    generator.eval()
+    
+    weight_name = '{}_{}.pkl'.format(weight_path.split('.')[0], config['TEST_CONFIG']['EPOCH'])
+    np.random.seed(82)
+
+    checkpoint = torch.load(weight_name, map_location='cpu')
+    generator.load_state_dict(checkpoint['state_dict_G'])
+    epoch_num = checkpoint['epoch']
+    print("=> loaded checkpoint '{}' (epoch {})".format(weight_path, checkpoint['epoch']))
+    
+    # Inference
+    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+
+    max_batch_num = 100
+
+    num_left = config['TEST_CONFIG']['GEN_NUM']
+
+    while num_left > 0:
+        temp_batch_size = min(max_batch_num, num_left)
+        z = Variable(
+            Tensor(np.random.normal(0, 1, (temp_batch_size, config['MODEL_CONFIG']['LATENT_DIM']))))
+        gen_imgs = generator(z)
+
+        for i in range(0, temp_batch_size):
+            save_image(gen_imgs.data[i],
+                        "{}/{}.jpg".format(output_dir, (i + config['TEST_CONFIG']['GEN_NUM']-num_left)),
+                        normalize=True)
+        num_left += -temp_batch_size
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", default= "train")
+    parser.add_argument("--output_dir", default=None)
     parser.add_argument("--config",
                         type=str,
                         default='configs/config_lsgan.yaml')
@@ -250,10 +289,15 @@ if __name__ == '__main__':
 
     config = yaml.load(open(opt.config, 'r'), Loader=yaml.FullLoader)
     config['MODE'] = opt.mode
+    if opt.output_dir:
+        config['TEST_CONFIG']['OUTPUT_DIR'] = opt.output_dir
 
     if opt.mode == 'train':
         train(config)
-        
+    elif opt.mode == 'val':
+        val(config)
+    elif opt.mode == 'test':
+        test(config)
     else:
-        inference(config)
+        print("Unsupport mode!")
 

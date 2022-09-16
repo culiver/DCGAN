@@ -58,5 +58,10 @@ VAL_CONFIG:
   # Directory
   DATA_DIR: 'data/1024x768/Zalando_top'
 
-
+TEST_CONFIG:
+  # Evaluated Epoch
+  EPOCH: 115
+  # Directory
+  OUTPUT_DIR: ''
+  GEN_NUM: 5000
 

@@ -55,8 +55,10 @@ VAL_CONFIG:
   BATCH_SIZE: 1
   GEN_NUM: 2000
 
+TEST_CONFIG:
+  # Evaluated Epoch
+  EPOCH: 115
   # Directory
-  DATA_DIR: 'data/1024x768/Zalando_top'
-
-
+  OUTPUT_DIR: ''
+  GEN_NUM: 5000
 
